@@ -18,11 +18,17 @@
 在此文件夹根目录打开终端，安装依赖并构建：
 
 ```bash
+sudo apt install -y python3-catkin-pkg
+if [ -n "${CONDA_PREFIX:-}" ] && command -v conda >/dev/null 2>&1; then
+  conda deactivate
+fi
 source /opt/ros/humble/setup.bash
 rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install
+colcon build --symlink-install --cmake-clean-cache --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3 -DPYTHON_EXECUTABLE=/usr/bin/python3
 source install/setup.bash
 ```
+
+构建命令固定使用 Ubuntu 的 Python，避免 CMake 误用 Conda Python。如果 `colcon` 明确提示 `openarm_description` 与已 source 的 underlay 包重名，并且你确认要用本工作区里的版本，再给构建命令添加 `--allow-overriding openarm_description`。
 
 然后复制上表中需要的启动命令。切换版本前在当前终端按 Ctrl+C 关闭上一套 RViz。
 
