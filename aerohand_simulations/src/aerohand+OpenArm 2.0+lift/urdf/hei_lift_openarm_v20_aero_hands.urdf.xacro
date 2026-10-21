@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<!--
+  HEI lift + OpenArm 2.0 + Aero Hand Open, RViz preview only.
+  Units: metres in URDF, radians for angles; extracted STL meshes use mm.
+  Lift source CAD: E:/xituo-work/Hei_robot_lift+openarm2.0.STEP.
+  Kinematics and arm visuals come from the official OpenArm 2.0 description.
+  Hand kinematics and meshes come from the original left/right Aero Hand URDFs.
+
+  The CAD coordinate order differs from URDF and its robot datum is offset
+  -95 mm in CAD depth: URDF xyz = (STEP z + 95 mm, STEP x, STEP y). The four
+  supplied CAD groups named 左手连接, 左手连接法兰, 右手连接, and 右手连接法兰
+  were transformed into the corresponding official OpenArm link7 frame and
+  exported as separate STL files. Their fixed connector and flange joints use
+  zero origins. Only visual geometry is modeled for those four added links.
+
+  Aero Hand CAD-component origins differ from the official URDF base frames.
+  That fixed offset was calibrated against OpenArm_v1.1_follower-test.STEP,
+  where both CAD occurrences and the working Aero Hand URDF mount are known.
+  Applying it to OpenArm_2.0-test.STEP gives these measured link7-to-hand poses:
+    left:  xyz =  0.000001 -0.001100 -0.050500, rpy = -pi 0 pi
+    right: xyz = -0.000001  0.000900 -0.050500, rpy = -pi 0 0
+  The initial hand direction therefore follows the supplied 2.0 assembly.
+
+  Stock OpenArm end effectors and ros2_control blocks are omitted. No hardware
+  driver, physical contact, force, controller, or hardware safety is modeled.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="hei_lift_openarm_v20_aero_hands">
+  <xacro:include filename="$(find openarm_description)/assets/robot/openarm_v2.0/urdf/utils/openarm_v20_robot.xacro" />
+
+  <xacro:property name="config_root" value="$(find openarm_description)/assets/robot/openarm_v2.0/config" />
+  <xacro:property name="arms_only"
+    value="${xacro.load_yaml('$(find aerohand_openarm_2_0_lift)/config/lift_arms_only.yaml')}" />
+  <material name="step_gray"><color rgba="0.65 0.65 0.65 1.0" /></material>
+  <material name="cnc_aluminum"><color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" /></material>
+
+  <link name="world" />
+  <link name="lift_fixed_link">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_2_0_lift/meshes/hei_lift_fixed.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="step_gray" />
+    </visual>
+  </link>
+  <joint name="lift_fixed_joint" type="fixed">
+    <parent link="world" />
+    <child link="lift_fixed_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+  <joint name="lift_joint" type="prismatic">
+    <parent link="lift_fixed_link" />
+    <child link="lift_carriage_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-0.12" upper="0.0" effort="1000" velocity="0.10" />
+  </joint>
+  <link name="lift_carriage_visual_link">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_2_0_lift/meshes/hei_lift_carriage.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="step_gray" />
+    </visual>
+  </link>
+  <joint name="lift_carriage_visual_joint" type="fixed">
+    <parent link="lift_carriage_link" />
+    <child link="lift_carriage_visual_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <xacro:openarm_v20_robot
+    config_root="${config_root}"
+    robot_preset="${arms_only}"
+    collapse_internal_empty_links="false"
+    emit_grasp_frame="false" />
+
+  <xacro:include filename="$(find aerohand)/urdf/aero_hand_open_left.urdf" />
+  <xacro:include filename="$(find aerohand)/urdf/aero_hand_open_right.urdf" />
+
+  <link name="openarm_left_v20_connector">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_2_0_lift/meshes/v20_left_connector_on_link7.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_left_v20_connector_mount" type="fixed">
+    <parent link="openarm_left_link7" />
+    <child link="openarm_left_v20_connector" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+  <link name="openarm_left_v20_flange">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_2_0_lift/meshes/v20_left_flange_on_link7.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_left_v20_flange_mount" type="fixed">
+    <parent link="openarm_left_v20_connector" />
+    <child link="openarm_left_v20_flange" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+  <joint name="openarm_left_v20_hand_mount" type="fixed">
+    <parent link="openarm_left_v20_flange" />
+    <child link="left_base_link" />
+    <origin xyz="0.00000100001 -0.00110018701 -0.05049994612" rpy="-3.14158898039 0 3.14159265359" />
+  </joint>
+
+  <link name="openarm_right_v20_connector">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_2_0_lift/meshes/v20_right_connector_on_link7.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_right_v20_connector_mount" type="fixed">
+    <parent link="openarm_right_link7" />
+    <child link="openarm_right_v20_connector" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+  <link name="openarm_right_v20_flange">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_2_0_lift/meshes/v20_right_flange_on_link7.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_right_v20_flange_mount" type="fixed">
+    <parent link="openarm_right_v20_connector" />
+    <child link="openarm_right_v20_flange" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+  <joint name="openarm_right_v20_hand_mount" type="fixed">
+    <parent link="openarm_right_v20_flange" />
+    <child link="right_base_link" />
+    <origin xyz="-0.00000099579 0.00090017437 -0.05049993806" rpy="-3.14158898039 0 0" />
+  </joint>
+</robot>

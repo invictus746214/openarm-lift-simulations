@@ -1,0 +1,838 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="total_lift_openarm">
+  <!--
+  robot: total_lift_openarm | consumers: ROS 2 robot_state_publisher, joint_state_publisher_gui, RViz
+  units: meters, kilograms, radians | frames: +X forward, +Y left, +Z up; world is bottom-center floor frame
+  source: STEP assembly; OpenArm v1.1 joint origins/limits/axes from the expanded reference model.
+  meshes: meshes/*.stl, exported from STEP in millimeters, scale 0.001; lift meshes use world/base frame at STEP pose
+  link mapping: OpenArm STEP L1-L4 -> links0-link3; links4-link6 use official OpenArm v1.0 wrist meshes and frames; STEP J7_D is restored on link7; the STEP EE gripper remains mounted after link7
+  visual origins: STEP body and proximal arm use measured assembly transforms; official wrist link4-link6 use upstream URDF frames; STEP J4-J5 covers are on link4 and J7_D is in the link7 frame
+  lift: q=0 is STEP assembled pose; positive +Z; SolidWorks distances 6-325 mm and 7-295 mm normalized to travel 0-0.319 m and 0-0.288 m
+  inertials omitted; collision geometry mirrors each STEP visual mesh, origin and scale; RViz is a kinematic preview without a contact solver or collision stop
+  gripper pivots: STEP centers are (-27.823872, 28.737296) / (27.823872, -28.737296) mm and (-18.600, 62.500) / (18.600, -62.500) mm; all axes are parallel to +Z
+  gripper alignment: crank radius 40.000 mm, link center distance 35.000 mm; proximal axis offset 0.00033 mm and distal link/slider axes coincide within 0.001 mm
+  gripper symmetry: link meshes are 180-degree mirrored about the rotor center; jaw envelopes mirror across Y=0 within 0.001 mm
+  wrist: J5/J6/J7 origins and axes match the official OpenArm v1.0 description; STEP L6/L7 combine multiple moving wrist members and cannot serve as one rigid URDF link; the two STEP J7_D connecting members are extracted separately into link7, while the full official link7 visual remains omitted because it overlaps the retained STEP gripper motor
+  gripper: the fixed link7-to-gripper mount is compensated for the restored official wrist origins so the STEP gripper keeps its zero-pose placement
+  gripper kinematics: a ROS node solves the STEP closed-loop linkage; slider q=0 is the STEP pose, q=-0.04 m closes each jaw
+  assumptions: official OpenArm v1.0 wrist geometry and kinematics approximate this v1.1 STEP wrist; STEP has component placement and geometry, not SolidWorks mate definitions
+  assumptions: lift force/velocity values are slider placeholders, not actuator specifications
+-->
+  <link name="world" />
+  <link name="lift_base_link">
+    <visual name="lift_base_visual">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/step_fixed_base.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="lift_base_visual_material">
+        <color rgba="0.76 0.77 0.79 1" />
+      </material>
+    </visual>
+    <collision name="lift_base_visual_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/step_fixed_base.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="lift_middle_link">
+    <visual name="lift_middle_visual">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/step_middle_stage.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="lift_middle_visual_material">
+        <color rgba="0.76 0.77 0.79 1" />
+      </material>
+    </visual>
+    <collision name="lift_middle_visual_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/step_middle_stage.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="lift_upper_link">
+    <visual name="lift_upper_visual">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/step_upper_stage.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="lift_upper_visual_material">
+        <color rgba="0.76 0.77 0.79 1" />
+      </material>
+    </visual>
+    <collision name="lift_upper_visual_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/step_upper_stage.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_body_link0">
+    <visual name="openarm_chest_STEP">
+      <origin xyz="0 0 0.000000474" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_body.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="openarm_chest_STEP_material">
+        <color rgba="0.78 0.79 0.81 1" />
+      </material>
+    </visual>
+    <collision name="openarm_chest_STEP_collision">
+      <origin xyz="0 0 0.000000474" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_body.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link0">
+    <visual name="left_STEP_1">
+      <origin xyz="0 0.098000114 -0.03099964" rpy="0.000003673 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_1_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_STEP_1_collision">
+      <origin xyz="0 0.098000114 -0.03099964" rpy="0.000003673 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link1">
+    <visual name="left_STEP_2">
+      <origin xyz="-0.0301 0.000999554 0.059000004" rpy="0 0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L2.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_2_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_STEP_2_collision">
+      <origin xyz="-0.0301 0.000999554 0.059000004" rpy="0 0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L2.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link2">
+    <visual name="left_STEP_3">
+      <origin xyz="-0.005 0.000999996 0.000999554" rpy="-1.570796327 0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L3.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_3_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_STEP_3_collision">
+      <origin xyz="-0.005 0.000999996 0.000999554" rpy="-1.570796327 0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L3.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link3">
+    <visual name="left_STEP_4">
+      <origin xyz="0 0.031499188 0.154749666" rpy="1.57079264 -0.087266463 -3.141592332" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L4.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_4_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_STEP_4_collision">
+      <origin xyz="0 0.031499188 0.154749666" rpy="1.57079264 -0.087266463 -3.141592332" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_L4.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link4">
+    <visual name="left_official_link4">
+      <origin xyz="0 -0.0315 -0.3425" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link4_visual_left.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_5_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_official_link4_collision">
+      <origin xyz="0 -0.0315 -0.3425" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link4_collision_left.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <visual name="left_STEP_J4_J5_cover">
+      <origin xyz="0 0.006648834 0.09749969" rpy="-0.000003673 0 3.141592654" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J4_J5_cover.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_J4_J5_cover_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_STEP_J4_J5_cover_collision">
+      <origin xyz="0 0.006648834 0.09749969" rpy="-0.000003673 0 3.141592654" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J4_J5_cover.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link5">
+    <visual name="left_official_link5">
+      <origin xyz="0 0 -0.438" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link5_visual_left.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_6_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_official_link5_collision">
+      <origin xyz="0 0 -0.438" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link5_collision_left.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <visual name="left_J5_J6_connector_A">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J5_J6_connector_A.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_J5_J6_connector_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="left_J5_J6_connector_A_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J5_J6_connector_A.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <visual name="left_J5_J6_connector_B">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J5_J6_connector_B.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_J5_J6_connector_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="left_J5_J6_connector_B_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J5_J6_connector_B.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link6">
+    <visual name="left_official_link6">
+      <origin xyz="-0.0375 0 -0.5585" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link6_visual_left.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_STEP_7_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_official_link6_collision">
+      <origin xyz="-0.0375 0 -0.5585" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link6_collision_left.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_link7">
+    <visual name="left_J7_D_from_STEP">
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J7_D.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_J7_D_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_J7_D_from_STEP_collision">
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_J7_D.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_gripper_base_link">
+    <visual name="left_gripper_base_STEP">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_EE.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_gripper_base_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="left_gripper_base_STEP_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_EE.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_gripper_rotor_link">
+    <visual name="left_gripper_rotor_STEP">
+      <origin xyz="0 0 -0.05" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_rotor.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_gripper_rotor_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="left_gripper_rotor_STEP_collision">
+      <origin xyz="0 0 -0.05" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_rotor.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_gripper_link_positive_link">
+    <visual name="left_gripper_link_positive_STEP">
+      <origin xyz="0.027824 -0.028737 -0.0645" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_link_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_gripper_link_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="left_gripper_link_positive_STEP_collision">
+      <origin xyz="0.027824 -0.028737 -0.0645" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_link_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_gripper_link_negative_link">
+    <visual name="left_gripper_link_negative_STEP">
+      <origin xyz="-0.027824 0.028737 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_link_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_gripper_link_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="left_gripper_link_negative_STEP_collision">
+      <origin xyz="-0.027824 0.028737 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_link_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_gripper_jaw_positive_link">
+    <visual name="left_gripper_positive_slider_STEP">
+      <origin xyz="0 -0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_slider_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_gripper_jaw_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="left_gripper_positive_slider_STEP_collision">
+      <origin xyz="0 -0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_slider_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_left_gripper_jaw_negative_link">
+    <visual name="left_gripper_negative_slider_STEP">
+      <origin xyz="0 0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_slider_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="left_gripper_jaw_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="left_gripper_negative_slider_STEP_collision">
+      <origin xyz="0 0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_left_gripper_slider_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link0">
+    <visual name="right_STEP_1">
+      <origin xyz="0 -0.047999379 0.169000176" rpy="-0.000003673 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_1_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_STEP_1_collision">
+      <origin xyz="0 -0.047999379 0.169000176" rpy="-0.000003673 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L1.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link1">
+    <visual name="right_STEP_2">
+      <origin xyz="-0.0301 -0.000999554 0.059000004" rpy="0 -0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L2.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_2_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_STEP_2_collision">
+      <origin xyz="-0.0301 -0.000999554 0.059000004" rpy="0 -0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L2.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link2">
+    <visual name="right_STEP_3">
+      <origin xyz="-0.005 -0.000999996 0.000999554" rpy="-1.570796327 -0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L3.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_3_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_STEP_3_collision">
+      <origin xyz="-0.005 -0.000999996 0.000999554" rpy="-1.570796327 -0.000003673 -1.570796327" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L3.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link3">
+    <visual name="right_STEP_4">
+      <origin xyz="0 0.029500812 0.154749442" rpy="1.570800014 -0.087266463 3.141592332" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L4.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_4_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_STEP_4_collision">
+      <origin xyz="0 0.029500812 0.154749442" rpy="1.570800014 -0.087266463 3.141592332" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_L4.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link4">
+    <visual name="right_official_link4">
+      <origin xyz="0 -0.0315 -0.3425" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link4_visual.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_5_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_official_link4_collision">
+      <origin xyz="0 -0.0315 -0.3425" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link4_collision.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <visual name="right_STEP_J4_J5_cover">
+      <origin xyz="0 0.004651166 0.097499417" rpy="0.000003673 0 3.141592654" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J4_J5_cover.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_J4_J5_cover_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_STEP_J4_J5_cover_collision">
+      <origin xyz="0 0.004651166 0.097499417" rpy="0.000003673 0 3.141592654" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J4_J5_cover.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link5">
+    <visual name="right_official_link5">
+      <origin xyz="0 0 -0.438" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link5_visual.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_6_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_official_link5_collision">
+      <origin xyz="0 0 -0.438" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link5_collision.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <visual name="right_J5_J6_connector_A">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J5_J6_connector_A.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_J5_J6_connector_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="right_J5_J6_connector_A_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J5_J6_connector_A.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+    <visual name="right_J5_J6_connector_B">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J5_J6_connector_B.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_J5_J6_connector_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="right_J5_J6_connector_B_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J5_J6_connector_B.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link6">
+    <visual name="right_official_link6">
+      <origin xyz="-0.0375 0 -0.5585" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link6_visual.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_STEP_7_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_official_link6_collision">
+      <origin xyz="-0.0375 0 -0.5585" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/official_openarm_v10_link6_collision.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_link7">
+    <visual name="right_J7_D_from_STEP">
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J7_D.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_J7_D_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_J7_D_from_STEP_collision">
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_J7_D.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_gripper_base_link">
+    <visual name="right_gripper_base_STEP">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_EE.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_gripper_base_material">
+        <color rgba="0.79 0.80 0.82 1" />
+      </material>
+    </visual>
+    <collision name="right_gripper_base_STEP_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_EE.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_gripper_rotor_link">
+    <visual name="right_gripper_rotor_STEP">
+      <origin xyz="0 0 -0.05" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_rotor.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_gripper_rotor_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="right_gripper_rotor_STEP_collision">
+      <origin xyz="0 0 -0.05" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_rotor.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_gripper_link_positive_link">
+    <visual name="right_gripper_link_positive_STEP">
+      <origin xyz="0.027824 -0.028737 -0.0645" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_link_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_gripper_link_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="right_gripper_link_positive_STEP_collision">
+      <origin xyz="0.027824 -0.028737 -0.0645" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_link_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_gripper_link_negative_link">
+    <visual name="right_gripper_link_negative_STEP">
+      <origin xyz="-0.027824 0.028737 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_link_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_gripper_link_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="right_gripper_link_negative_STEP_collision">
+      <origin xyz="-0.027824 0.028737 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_link_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_gripper_jaw_positive_link">
+    <visual name="right_gripper_positive_slider_STEP">
+      <origin xyz="0 -0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_slider_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_gripper_jaw_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="right_gripper_positive_slider_STEP_collision">
+      <origin xyz="0 -0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_slider_positive.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="openarm_right_gripper_jaw_negative_link">
+    <visual name="right_gripper_negative_slider_STEP">
+      <origin xyz="0 0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_slider_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+      <material name="right_gripper_jaw_material"><color rgba="0.79 0.80 0.82 1" /></material>
+    </visual>
+    <collision name="right_gripper_negative_slider_STEP_collision">
+      <origin xyz="0 0.0625 -0.0595" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://total_lift_openarm_sim/meshes/openarm_right_gripper_slider_negative.stl" scale="0.001 0.001 0.001" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="world_to_lift_base" type="fixed">
+    <parent link="world" />
+    <child link="lift_base_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+  <joint name="lift_stage1_joint" type="prismatic">
+    <parent link="lift_base_link" />
+    <child link="lift_middle_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="0" upper="0.319" effort="1000" velocity="0.05" />
+  </joint>
+  <joint name="lift_stage2_joint" type="prismatic">
+    <parent link="lift_middle_link" />
+    <child link="lift_upper_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="0" upper="0.288" effort="1000" velocity="0.05" />
+  </joint>
+  <joint name="openarm_body_mount_joint" type="fixed">
+    <parent link="lift_upper_link" />
+    <child link="openarm_body_link0" />
+    <origin xyz="-0.108002395 -0.000002775 0.303843763" rpy="0 0 -3.141592654" />
+  </joint>
+  <joint name="openarm_left_openarm_body_link0_joint" type="fixed">
+    <parent link="openarm_body_link0" />
+    <child link="openarm_left_link0" />
+    <origin xyz="0 0.031 0.698" rpy="-1.5708 0 0" />
+  </joint>
+  <joint name="openarm_left_joint1" type="revolute">
+    <parent link="openarm_left_link0" />
+    <child link="openarm_left_link1" />
+    <origin xyz="0.0 0.0 0.0625" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="40" lower="-3.490659" upper="1.3962629999999998" velocity="16.754666" />
+  </joint>
+  <joint name="openarm_left_joint2" type="revolute">
+    <parent link="openarm_left_link1" />
+    <child link="openarm_left_link2" />
+    <origin xyz="-0.0301 0.0 0.06" rpy="-1.57079632679 0 0" />
+    <axis xyz="-1 0 0" />
+    <limit effort="40" lower="-3.3161253267948965" upper="0.17453267320510335" velocity="16.754666" />
+  </joint>
+  <joint name="openarm_left_joint3" type="revolute">
+    <parent link="openarm_left_link2" />
+    <child link="openarm_left_link3" />
+    <origin xyz="0.0301 0.0 0.06625" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="27" lower="-1.570796" upper="1.570796" velocity="5.445426" />
+  </joint>
+  <joint name="openarm_left_joint4" type="revolute">
+    <parent link="openarm_left_link3" />
+    <child link="openarm_left_link4" />
+    <origin xyz="-0.0 0.0315 0.15375" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit effort="27" lower="0.0" upper="2.443461" velocity="5.445426" />
+  </joint>
+  <joint name="openarm_left_joint5" type="revolute">
+    <parent link="openarm_left_link4" />
+    <child link="openarm_left_link5" />
+    <origin xyz="0 -0.0315 0.0955" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946" />
+  </joint>
+  <joint name="openarm_left_joint6" type="revolute">
+    <parent link="openarm_left_link5" />
+    <child link="openarm_left_link6" />
+    <origin xyz="0.0375 0 0.1205" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit effort="7" lower="-0.785398" upper="0.785398" velocity="20.943946" />
+  </joint>
+  <joint name="openarm_left_joint7" type="revolute">
+    <parent link="openarm_left_link6" />
+    <child link="openarm_left_link7" />
+    <origin xyz="-0.0375 0 0" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946" />
+  </joint>
+  <joint name="openarm_left_gripper_mount" type="fixed">
+    <parent link="openarm_left_link7" />
+    <child link="openarm_left_gripper_base_link" />
+    <origin xyz="-0.002093009 0.001049187 0.050500406" rpy="0.000003673 0 0" />
+  </joint>
+  <joint name="openarm_left_gripper_rotor_joint" type="revolute">
+    <parent link="openarm_left_gripper_base_link" />
+    <child link="openarm_left_gripper_rotor_link" />
+    <origin xyz="0 0 0.05" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="0" upper="0.94" effort="40" velocity="2" />
+  </joint>
+  <joint name="openarm_left_gripper_link_positive_joint" type="revolute">
+    <parent link="openarm_left_gripper_rotor_link" />
+    <child link="openarm_left_gripper_link_positive_link" />
+    <origin xyz="-0.027824 0.028737 0.0145" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.318" upper="0" effort="40" velocity="2" />
+  </joint>
+  <joint name="openarm_left_gripper_link_negative_joint" type="revolute">
+    <parent link="openarm_left_gripper_rotor_link" />
+    <child link="openarm_left_gripper_link_negative_link" />
+    <origin xyz="0.027824 -0.028737 0.0095" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.318" upper="0" effort="40" velocity="2" />
+  </joint>
+  <joint name="openarm_left_gripper_close_joint" type="prismatic">
+    <parent link="openarm_left_gripper_base_link" />
+    <child link="openarm_left_gripper_jaw_positive_link" />
+    <origin xyz="0 0.0625 0.0595" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit lower="-0.04" upper="0" effort="40" velocity="0.05" />
+  </joint>
+  <joint name="openarm_left_gripper_mirror_joint" type="prismatic">
+    <parent link="openarm_left_gripper_base_link" />
+    <child link="openarm_left_gripper_jaw_negative_link" />
+    <origin xyz="0 -0.0625 0.0595" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.04" upper="0" effort="40" velocity="0.05" />
+    <mimic joint="openarm_left_gripper_close_joint" multiplier="1" />
+  </joint>
+  <joint name="openarm_right_openarm_body_link0_joint" type="fixed">
+    <parent link="openarm_body_link0" />
+    <child link="openarm_right_link0" />
+    <origin xyz="0 -0.031 0.698" rpy="1.5708 0 0" />
+  </joint>
+  <joint name="openarm_right_joint1" type="revolute">
+    <parent link="openarm_right_link0" />
+    <child link="openarm_right_link1" />
+    <origin xyz="0.0 0.0 0.0625" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="40" lower="-1.396263" upper="3.490659" velocity="16.754666" />
+  </joint>
+  <joint name="openarm_right_joint2" type="revolute">
+    <parent link="openarm_right_link1" />
+    <child link="openarm_right_link2" />
+    <origin xyz="-0.0301 0.0 0.06" rpy="1.57079632679 0 0" />
+    <axis xyz="-1 0 0" />
+    <limit effort="40" lower="-0.17453267320510335" upper="3.3161253267948965" velocity="16.754666" />
+  </joint>
+  <joint name="openarm_right_joint3" type="revolute">
+    <parent link="openarm_right_link2" />
+    <child link="openarm_right_link3" />
+    <origin xyz="0.0301 0.0 0.06625" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="27" lower="-1.570796" upper="1.570796" velocity="5.445426" />
+  </joint>
+  <joint name="openarm_right_joint4" type="revolute">
+    <parent link="openarm_right_link3" />
+    <child link="openarm_right_link4" />
+    <origin xyz="-0.0 0.0315 0.15375" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit effort="27" lower="0.0" upper="2.443461" velocity="5.445426" />
+  </joint>
+  <joint name="openarm_right_joint5" type="revolute">
+    <parent link="openarm_right_link4" />
+    <child link="openarm_right_link5" />
+    <origin xyz="0 -0.0315 0.0955" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946" />
+  </joint>
+  <joint name="openarm_right_joint6" type="revolute">
+    <parent link="openarm_right_link5" />
+    <child link="openarm_right_link6" />
+    <origin xyz="0.0375 0 0.1205" rpy="0 0 0" />
+    <axis xyz="1 0 0" />
+    <limit effort="7" lower="-0.785398" upper="0.785398" velocity="20.943946" />
+  </joint>
+  <joint name="openarm_right_joint7" type="revolute">
+    <parent link="openarm_right_link6" />
+    <child link="openarm_right_link7" />
+    <origin xyz="-0.0375 0 0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946" />
+  </joint>
+  <joint name="openarm_right_gripper_mount" type="fixed">
+    <parent link="openarm_right_link7" />
+    <child link="openarm_right_gripper_base_link" />
+    <origin xyz="-0.002091009 -0.000949187 0.050500407" rpy="-0.000003673 0 0" />
+  </joint>
+  <joint name="openarm_right_gripper_rotor_joint" type="revolute">
+    <parent link="openarm_right_gripper_base_link" />
+    <child link="openarm_right_gripper_rotor_link" />
+    <origin xyz="0 0 0.05" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="0" upper="0.94" effort="40" velocity="2" />
+  </joint>
+  <joint name="openarm_right_gripper_link_positive_joint" type="revolute">
+    <parent link="openarm_right_gripper_rotor_link" />
+    <child link="openarm_right_gripper_link_positive_link" />
+    <origin xyz="-0.027824 0.028737 0.0145" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.318" upper="0" effort="40" velocity="2" />
+  </joint>
+  <joint name="openarm_right_gripper_link_negative_joint" type="revolute">
+    <parent link="openarm_right_gripper_rotor_link" />
+    <child link="openarm_right_gripper_link_negative_link" />
+    <origin xyz="0.027824 -0.028737 0.0095" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <limit lower="-1.318" upper="0" effort="40" velocity="2" />
+  </joint>
+  <joint name="openarm_right_gripper_close_joint" type="prismatic">
+    <parent link="openarm_right_gripper_base_link" />
+    <child link="openarm_right_gripper_jaw_positive_link" />
+    <origin xyz="0 0.0625 0.0595" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <limit lower="-0.04" upper="0" effort="40" velocity="0.05" />
+  </joint>
+  <joint name="openarm_right_gripper_mirror_joint" type="prismatic">
+    <parent link="openarm_right_gripper_base_link" />
+    <child link="openarm_right_gripper_jaw_negative_link" />
+    <origin xyz="0 -0.0625 0.0595" rpy="0 0 0" />
+    <axis xyz="0 -1 0" />
+    <limit lower="-0.04" upper="0" effort="40" velocity="0.05" />
+    <mimic joint="openarm_right_gripper_close_joint" multiplier="1" />
+  </joint>
+</robot>

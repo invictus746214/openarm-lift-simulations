@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.8)
+project(total_lift_openarm_sim)
+find_package(ament_cmake REQUIRED)
+install(DIRECTORY launch meshes urdf rviz LICENSES DESTINATION share/${PROJECT_NAME})
+install(FILES README.md collision_audit_report.md DESTINATION share/${PROJECT_NAME})
+install(PROGRAMS scripts/gripper_linkage_kinematics.py DESTINATION lib/${PROJECT_NAME} RENAME gripper_linkage_kinematics)
+ament_package()

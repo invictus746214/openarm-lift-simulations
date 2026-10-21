@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<!--
+  Design ledger: OpenArm v1.x + Aero Hand Open, RViz preview only.
+  Units: metres in URDF, radians for angles. Source adapter STL uses mm.
+  Source CAD: E:/xituo-work/OpenArm_v1.1_follower-test.STEP, exported 2026-09-22.
+  STEP identifies both hands, J8_A_2, and J8_B_2. J8_B_2 is the supplied adapter:
+  its bbox is 57 x 63 x 14 mm, volume 20185 mm^3, versus the supplied
+  adapter STL bbox 56.97 x 63 x 14 mm and mesh volume 20167 mm^3.
+  The mesh below is that supplied STL recentered to the hand-base frame.
+  Kinematics come from openarm_description v1.0 macros and the original
+  left/right Aero Hand URDFs; STEP itself does not define active URDF joints.
+  OpenArm v1.0 zero-pose link7 origins are (0,+/-0.1534984,0.26199955).
+  STEP hand base mounting planes are (0,+0.15245,0.2114995) left and
+  (0,-0.15255,0.2114995) right, with fingers pointing down.
+  Fixed mount offsets relative to link7 are therefore (0,+0.0010484,0.0505)
+  and (0,-0.0009484,0.0505); left yaw = pi, right yaw = 0.
+  The tiny CAD-to-URDF 1.x model differences remain a visual approximation.
+  No controller, physical contact, force, or hardware safety is modeled.
+  The revised 2026-09-23 STEP hides both terminal J8 motor housings. The
+  display_v11 launch file therefore removes the visual elements from the two
+  OpenArm link7 links after xacro expansion, while preserving their frames.
+  The two J8_A_2 connector occurrences are extracted from that STEP and baked
+  into their corresponding OpenArm link7 frames. Their fixed joints therefore
+  use zero origins; only visual geometry is modeled for these connectors.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="openarm_v11_aero_hands">
+  <material name="cnc_aluminum"><color rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" /></material>
+  <xacro:include filename="$(find openarm_description)/assets/robot/openarm_v1.0/urdf/body/openarm_body.xacro" />
+  <xacro:include filename="$(find openarm_description)/assets/robot/openarm_v1.0/urdf/arm/openarm_arm.xacro" />
+
+  <xacro:property name="arm_config" value="$(find openarm_description)/assets/robot/openarm_v1.0/config/arm" />
+  <xacro:property name="body_config" value="$(find openarm_description)/assets/robot/openarm_v1.0/config/body" />
+  <xacro:property name="arm_joint_limits" value="${xacro.load_yaml(arm_config + '/joint_limits.yaml')}" />
+  <xacro:property name="arm_inertials" value="${xacro.load_yaml(arm_config + '/inertials.yaml')}" />
+  <xacro:property name="arm_kinematics" value="${xacro.load_yaml(arm_config + '/kinematics.yaml')}" />
+  <xacro:property name="arm_kinematics_link" value="${xacro.load_yaml(arm_config + '/kinematics_link.yaml')}" />
+  <xacro:property name="arm_kinematics_offset" value="${xacro.load_yaml(arm_config + '/kinematics_offset.yaml')}" />
+  <xacro:property name="body_inertials" value="${xacro.load_yaml(body_config + '/inertials.yaml')}" />
+  <xacro:property name="body_kinematics" value="${xacro.load_yaml(body_config + '/kinematics.yaml')}" />
+  <xacro:property name="body_kinematics_link" value="${xacro.load_yaml(body_config + '/kinematics_link.yaml')}" />
+
+  <xacro:openarm_body body_type="v10" body_prefix="" connected_to="world"
+    inertials="${body_inertials}" kinematics="${body_kinematics}"
+    kinematics_link="${body_kinematics_link}" />
+  <xacro:openarm_arm arm_type="v10" arm_prefix="left_" connected_to="openarm_body_link0"
+    xyz="0 0.031 0.698" rpy="-1.5708 0 0"
+    joint_limits="${arm_joint_limits}" inertials="${arm_inertials}"
+    kinematics="${arm_kinematics}" kinematics_link="${arm_kinematics_link}"
+    kinematics_offset="${arm_kinematics_offset}" />
+  <xacro:openarm_arm arm_type="v10" arm_prefix="right_" connected_to="openarm_body_link0"
+    xyz="0 -0.031 0.698" rpy="1.5708 0 0"
+    joint_limits="${arm_joint_limits}" inertials="${arm_inertials}"
+    kinematics="${arm_kinematics}" kinematics_link="${arm_kinematics_link}"
+    kinematics_offset="${arm_kinematics_offset}" />
+
+  <xacro:include filename="$(find aerohand)/urdf/aero_hand_open_left.urdf" />
+  <xacro:include filename="$(find aerohand)/urdf/aero_hand_open_right.urdf" />
+
+  <link name="openarm_left_j8_a_connector">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_1_0/meshes/j8_a_left_on_link7.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_left_j8_a_mount" type="fixed">
+    <parent link="openarm_left_link7" />
+    <child link="openarm_left_j8_a_connector" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <link name="openarm_left_aero_adapter">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_1_0/meshes/adapter_on_hand.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_left_adapter_mount" type="fixed">
+    <parent link="openarm_left_link7" />
+    <child link="openarm_left_aero_adapter" />
+    <origin xyz="0 0.0010484 0.0505" rpy="0 0 3.141592653589793" />
+  </joint>
+  <joint name="openarm_left_adapter_to_hand" type="fixed">
+    <parent link="openarm_left_aero_adapter" />
+    <child link="left_base_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <link name="openarm_right_j8_a_connector">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_1_0/meshes/j8_a_right_on_link7.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_right_j8_a_mount" type="fixed">
+    <parent link="openarm_right_link7" />
+    <child link="openarm_right_j8_a_connector" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <link name="openarm_right_aero_adapter">
+    <visual>
+      <geometry><mesh filename="package://aerohand_openarm_1_0/meshes/adapter_on_hand.STL" scale="0.001 0.001 0.001" /></geometry>
+      <material name="cnc_aluminum" />
+    </visual>
+  </link>
+  <joint name="openarm_right_adapter_mount" type="fixed">
+    <parent link="openarm_right_link7" />
+    <child link="openarm_right_aero_adapter" />
+    <origin xyz="0 -0.0009484 0.0505" rpy="0 0 0" />
+  </joint>
+  <joint name="openarm_right_adapter_to_hand" type="fixed">
+    <parent link="openarm_right_aero_adapter" />
+    <child link="right_base_link" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+</robot>
